@@ -14,10 +14,18 @@ optee-os-common: ffa-sp-all
 optee-os-clean: ffa-sp-all-clean
 
 ffa-sp-all-realclean:
-	rm -rf $(TS_INSTALL_PREFIX)/opteesp
+	rm -rf $(TS_INSTALL_PREFIX)/$(SP_TARGET_ENV)
 
 ifneq ($(COMPILE_S_USER),64)
 $(error Trusted Services SPs only support AArch64)
+endif
+
+ifeq ($(SP_TARGET_ENV),opteesp)
+SP_FILE_EXTENSION ?= stripped.elf
+else ifeq ($(SP_TARGET_ENV),sp)
+SP_FILE_EXTENSION ?= bin
+else
+$(error SP target environment must be 'opteesp' or 'sp')
 endif
 
 # Helper macro to build and install Trusted Services Secure Partitions (SPs).
@@ -37,12 +45,12 @@ define build-sp
 .PHONY: ffa-$1-sp
 ffa-$1-sp:
 	CROSS_COMPILE=$(subst $(CCACHE),,$(CROSS_COMPILE_S_USER)) cmake -G"Unix Makefiles" \
-		-S $(TS_PATH)/deployments/$1/opteesp -B $(TS_BUILD_PATH)/$1 \
+		-S $(TS_PATH)/deployments/$1/$(SP_TARGET_ENV) -B $(TS_BUILD_PATH)/$1 \
 		-DCMAKE_INSTALL_PREFIX=$(TS_INSTALL_PREFIX) \
 		-DCMAKE_C_COMPILER_LAUNCHER=$(CCACHE) $(SP_COMMON_FLAGS) $3
 	$$(MAKE) -C $(TS_BUILD_PATH)/$1 install
-	dtc -I dts -O dtb -o $(TS_INSTALL_PREFIX)/opteesp/manifest/$2.dtb \
-				$(TS_INSTALL_PREFIX)/opteesp/manifest/$2.dts
+	dtc -I dts -O dtb -o $(TS_INSTALL_PREFIX)/$(SP_TARGET_ENV)/manifest/$2.dtb \
+				$(TS_INSTALL_PREFIX)/$(SP_TARGET_ENV)/manifest/$2.dts
 
 .PHONY: ffa-$1-sp-clean
 ffa-$1-sp-clean:
@@ -56,7 +64,7 @@ ffa-sp-all: ffa-$1-sp
 ffa-sp-all-clean: ffa-$1-sp-clean
 ffa-sp-all-realclean: ffa-$1-sp-realclean
 
-optee_os_sp_paths += $(TS_INSTALL_PREFIX)/opteesp/bin/$2.stripped.elf
+optee_os_sp_paths += $(TS_INSTALL_PREFIX)/$(SP_TARGET_ENV)/bin/$2.$(SP_FILE_EXTENSION)
 endef
 
 ifeq ($(SP_PACKAGING_METHOD),embedded)
@@ -65,7 +73,7 @@ OPTEE_OS_COMMON_EXTRA_FLAGS += SP_PATHS="$(optee_os_sp_paths)"
 else ifeq ($(SP_PACKAGING_METHOD),fip)
 # Configure TF-A to load the SPs from FIP by BL2
 TF_A_FIP_SP_FLAGS += ARM_BL2_SP_LIST_DTS=$(ROOT)/build/fvp/bl2_sp_list.dtsi \
-		SP_LAYOUT_FILE=$(TS_INSTALL_PREFIX)/opteesp/json/sp_layout.json
+		SP_LAYOUT_FILE=$(TS_INSTALL_PREFIX)/$(SP_TARGET_ENV)/json/sp_layout.json
 
 # This should be removed when TF-A is updated to v2.7 or later
 $(call force,MEASURED_BOOT,n,Need TF-A v2.7 for FIP SPs with Measured Boot)

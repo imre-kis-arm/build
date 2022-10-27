@@ -5,6 +5,8 @@ MEASURED_BOOT			?= y
 MEASURED_BOOT_FTPM		?= n
 TS_SMM_GATEWAY			?= y
 TS_UEFI_TESTS			?= y
+# Supported values: opteesp, sp
+SP_TARGET_ENV			?= opteesp
 # Supported values: embedded, fip
 SP_PACKAGING_METHOD		?= embedded
 SPMC_TESTS			?= y
